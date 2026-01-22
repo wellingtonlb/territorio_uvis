@@ -30,7 +30,7 @@ A extensão é simples e direta. Veja o fluxo de uso:
 
 | 1️⃣ Digite o Endereço ou CEP | 2️⃣ Receba os Dados da UVIS/DA |
 | :---: | :---: |
-| ![Busca no Popup](./img/popup_busca.jpg) | ![Resultado da Consulta](./img/popup_resultado.jpg) |
+| ![Busca no Popup](./img/popup_busa.jpg) | ![Resultado da Consulta](./img/popup_resultad.jpg) |
 
 ---
 
