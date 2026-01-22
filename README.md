@@ -1,4 +1,4 @@
-# territorio_uvis
+# Extensão - Consulta UVIS
 Consulta a **Unidade de Vigilância em Saúde (UVIS)** e o **Distrito Administrativo (DA)** de qualquer endereço diretamente pelo navegador.
 
 [![Disponível na Chrome Web Store]
