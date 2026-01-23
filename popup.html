@@ -34,76 +34,71 @@
         .col-8 { flex: 2; }
         .col-4 { flex: 1; }
 
-        /* Botão Consultar */
-        .btn-main { 
+        /* Botão */
+        button#btn-consultar { 
             width: 100%; 
             padding: 10px; 
-            background: #0d6efd; 
+            background-color: #0d6efd; 
             color: white; 
             border: none; 
-            cursor: pointer; 
             border-radius: 4px; 
             font-weight: bold; 
-            font-size: 14px;
-            transition: 0.2s; 
+            cursor: pointer; 
+            margin-top: 5px; 
         }
-        .btn-main:hover { background: #0b5ed7; }
-
-        /* Loading */
-        #loading { display: none; text-align: center; padding: 15px; color: #6c757d; font-size: 12px; }
-        .spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid rgba(0,0,0,0.1); border-left-color: #0d6efd; border-radius: 50%; animation: spin 1s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        button#btn-consultar:hover { background-color: #0b5ed7; }
+        button#btn-consultar:disabled { background-color: #ccc; cursor: not-allowed; }
 
         /* Resultados */
-        #results-area { display: none; margin-top: 15px; border-top: 1px solid #dee2e6; padding-top: 10px; }
+        #results-area { display: none; margin-top: 15px; }
         
         .result-row { 
             display: flex; 
+            justify-content: space-between; 
             align-items: center; 
             background: white; 
             border: 1px solid #dee2e6; 
-            padding: 8px 10px; 
-            border-radius: 6px; 
+            border-radius: 4px; 
+            padding: 8px; 
             margin-bottom: 8px; 
         }
-        
-        .res-content { flex: 1; overflow: hidden; }
-        .res-label { font-size: 10px; color: #6c757d; text-transform: uppercase; font-weight: 700; display: block; }
-        .res-value { font-size: 13px; color: #212529; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        
-        /* Cores das bordas */
-        .border-uvis { border-left: 4px solid #0d6efd; }
-        .border-da { border-left: 4px solid #198754; }
-        .border-std { border-left: 4px solid #adb5bd; }
 
-        /* Botão Copiar Pequeno */
+        .border-uvis { border-left: 3px solid #0d6efd; }
+        .border-da { border-left: 3px solid #6610f2; }
+        .border-std { border-left: 3px solid #adb5bd; }
+
+        .res-content { display: flex; flex-direction: column; width: 85%; }
+        .res-label { font-size: 10px; text-transform: uppercase; color: #6c757d; font-weight: bold; }
+        .res-value { font-size: 13px; color: #212529; font-weight: 600; word-break: break-word; }
+        
+        .fw-bold { font-weight: 800; }
+
         .btn-copy { 
-            background: #f8f9fa; 
+            background: none; 
             border: 1px solid #dee2e6; 
-            color: #495057; 
-            width: 32px; height: 32px; 
             border-radius: 4px; 
             cursor: pointer; 
-            display: flex; align-items: center; justify-content: center;
-            margin-left: 8px;
-            transition: 0.2s;
+            padding: 4px 8px; 
+            color: #6c757d; 
         }
-        .btn-copy:hover { background: #e9ecef; color: #0d6efd; }
-        .btn-copy.copied { background: #198754; color: white; border-color: #198754; }
+        .btn-copy:hover { background-color: #e9ecef; color: #0d6efd; }
+
+        #loading { display: none; text-align: center; margin-top: 20px; color: #0d6efd; }
     </style>
 </head>
 <body>
-    <h3>📍 Consulta UVIS</h3>
+
+    <h3>Localizador UVIS e UBS</h3>
 
     <div class="input-group">
-        <label>CEP (Busca Automática)</label>
+        <label>CEP</label>
         <input type="text" id="cep" placeholder="00000-000" maxlength="9">
     </div>
 
-    <div class="input-group row">
+    <div class="row input-group">
         <div class="col-8">
-            <label>Logradouro *</label>
-            <input type="text" id="logradouro" placeholder="Nome da rua">
+            <label>Logradouro</label>
+            <input type="text" id="logradouro" placeholder="Nome da Rua">
         </div>
         <div class="col-4">
             <label>Número</label>
@@ -111,17 +106,17 @@
         </div>
     </div>
 
-    <button id="btn-consultar" class="btn-main">🔍 CONSULTAR</button>
+    <button id="btn-consultar" disabled>Carregando bases...</button>
 
-    <div id="loading"><div class="spinner"></div> Consultando bases...</div>
+    <div id="loading">Processando...</div>
 
     <div id="results-area">
         <div class="result-row border-uvis">
             <div class="res-content">
-                <span class="res-label">UVIS</span>
+                <span class="res-label">UVIS (Referência)</span>
                 <span id="res-uvis" class="res-value">-</span>
             </div>
-            <button class="btn-copy" data-target="res-uvis" title="Copiar">❐</button>
+            <button class=\"btn-copy\" data-target=\"res-uvis\" title=\"Copiar\">❐</button>
         </div>
 
         <div class="result-row border-da">
@@ -130,6 +125,14 @@
                 <span id="res-da" class="res-value">-</span>
             </div>
             <button class="btn-copy" data-target="res-da" title="Copiar">❐</button>
+        </div>
+
+        <div class="result-row" style="border-left: 3px solid #198754;">
+            <div class="res-content">
+                <span class="res-label" style="color: #198754;">🏥 UBS de Referência</span>
+                <span id="res-ubs" class="res-value fw-bold">-</span>
+            </div>
+            <button class="btn-copy" data-target="res-ubs" title="Copiar">❐</button>
         </div>
 
         <div class="result-row border-std">
@@ -157,7 +160,11 @@
         </div>
     </div>
 
-    <script src="turf.js"></script>
+    <p style="text-align: center; margin-top: 15px; font-size: 10px; color: #adb5bd;">
+        Política de Privacidade
+    </p>
+
     <script src="popup.js"></script>
+    <script src="turf.js"></script>
 </body>
 </html>

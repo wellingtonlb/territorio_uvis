@@ -1,12 +1,25 @@
 {
   "manifest_version": 3,
-  "name": "Localizador UVIS SP",
+  "name": "Localizador UVIS e UBS",
   "version": "2.0",
-  "description": "Consulta rápida de UVIS, DA e Bairro por endereço.",
-  "permissions": ["clipboardWrite"],
+  "description": "Consulta rápida de UVIS, UBS DA e Bairro por endereço.",
+  "permissions": [
+    "clipboardWrite"
+  ],
   "host_permissions": [
     "https://nominatim.openstreetmap.org/*",
     "https://viacep.com.br/*"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "Territórios_UVIS.geojson",
+        "Territorios_UBS.geojson"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
   ],
   "action": {
     "default_popup": "popup.html",

@@ -1,24 +1,40 @@
 document.addEventListener('DOMContentLoaded', function() {
     console.log("Extensão iniciada.");
 
-    let geoJsonData = null;
+    let geoJsonData = null; 
+    let geoJsonUBS = null;   
     let bairroCache = "";
 
-    const nomeDoArquivo = 'Territórios_UVIS.geojson';
+    const arquivoUVIS = 'Territórios_UVIS.geojson';
+    const arquivoUBS = 'Territorios_UBS.geojson';
 
-    fetch(chrome.runtime.getURL(nomeDoArquivo))
-        .then(r => r.json())
-        .then(data => {
-            geoJsonData = data;
-            console.log("Base de dados carregada!");
-        })
-        .catch(err => {
-            console.error("Erro ao ler arquivo:", err);
-            document.querySelector('h3').innerText = "❌ ERRO: Arquivo não encontrado";
-            document.querySelector('h3').style.color = "red";
-            alert(`ATENÇÃO: Não consegui ler o arquivo "${nomeDoArquivo}".\n\nVerifique se o nome na pasta está IDÊNTICO.`);
-        });
+    const btn = document.getElementById('btn-consultar');
 
+ 
+    Promise.all([
+        fetch(chrome.runtime.getURL(arquivoUVIS)).then(r => r.json()),
+        fetch(chrome.runtime.getURL(arquivoUBS)).then(r => r.json())
+    ])
+    .then(([dataUVIS, dataUBS]) => {
+        geoJsonData = dataUVIS;
+        geoJsonUBS = dataUBS;
+        console.log("Todas as bases carregadas!");
+        if (btn) {
+            btn.innerText = "🔍 CONSULTAR";
+            btn.disabled = false;
+        }
+    })
+    .catch(err => {
+        console.error("Erro ao ler arquivos:", err);
+        const title = document.querySelector('h3');
+        if (title) {
+            title.innerText = "❌ ERRO: Bases não encontradas";
+            title.style.color = "red";
+        }
+        alert(`ATENÇÃO: Não consegui ler os arquivos GeoJSON.\nVerifique se eles estão na pasta.`);
+    });
+
+ 
     const cepInput = document.getElementById('cep');
     if (cepInput) {
         cepInput.addEventListener('blur', function() {
@@ -37,7 +53,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    const btn = document.getElementById('btn-consultar');
+ 
     if (btn) {
         btn.addEventListener('click', function() {
             const rua = document.getElementById('logradouro').value;
@@ -54,36 +70,26 @@ document.addEventListener('DOMContentLoaded', function() {
             results.style.display = 'none';
 
             const query = `${rua}, ${num}, São Paulo, Brasil`;
+            
+ 
+            const cacheKey = `geo_${query.toLowerCase().replace(/\s/g, '_')}`;
+            const cachedData = localStorage.getItem(cacheKey);
 
-            fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=1&q=${encodeURIComponent(query)}`, {
-                headers: {
-                    "Accept-Language": "pt-BR"
-                }
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`Erro HTTP: ${response.status}`);
-                }
-                return response.text().then(text => {
-                    try {
-                        return JSON.parse(text);
-                    } catch (err) {
-                        throw new Error("A API retornou um erro de bloqueio ou formato inválido.");
-                    }
-                });
-            })
-            .then(data => {
+            const processarDados = (data) => {
                 loading.style.display = 'none';
                 btn.style.display = 'block';
 
                 if (data && data.length > 0) {
+                    const lat = parseFloat(data[0].lat);
+                    const lon = parseFloat(data[0].lon);
+
+ 
                     document.getElementById('res-log').innerText = rua + (num ? `, ${num}` : '');
                     
                     let cepEncontrado = cepVal;
                     if (!cepEncontrado && data[0].address && data[0].address.postcode) {
                         cepEncontrado = data[0].address.postcode;
                     }
-
                     document.getElementById('res-cep').innerText = cepEncontrado || "Não informado";
 
                     let bairroMapa = "";
@@ -93,80 +99,128 @@ document.addEventListener('DOMContentLoaded', function() {
                     const bairroFinal = bairroCache || bairroMapa || "Não identificado";
                     document.getElementById('res-bairro').innerText = bairroFinal;
 
-                    verificarLocal(parseFloat(data[0].lat), parseFloat(data[0].lon));
+ 
+                    if (typeof turf !== 'undefined' && geoJsonData) {
+                        const ponto = turf.point([lon, lat]);
+                        
+                        let candidatosUVIS = [];
+                        let candidatosDA = [];
+
+ 
+                        turf.featureEach(geoJsonData, function(feat) {
+                            if (turf.booleanPointInPolygon(ponto, feat)) {
+                                const props = feat.properties;
+                                for (const [key, value] of Object.entries(props)) {
+                                    const k = key.toLowerCase();
+                                    const v = String(value).trim();
+
+ 
+                                    if (k.includes('uvis')) {
+                                        let pontos = 0;
+                                        if (k.includes('nome') || k.includes('nm')) pontos += 20;
+                                        if (isNaN(v)) pontos += 10;
+                                        candidatosUVIS.push({ valor: v, pontos: pontos });
+                                    }
+
+ 
+                                    if (k.includes('da') || k.includes('distrito')) {
+                                        let pontos = 0;
+                                        
+ 
+                                        if (k.includes('nome') || k.includes('nm')) pontos += 100;
+                                        
+ 
+                                        if (k.includes('cod') || k.includes('cd') || k.includes('id')) pontos -= 100;
+                                        
+                                        
+                                        if (!isNaN(v.replace(',', '.'))) {
+                                            pontos -= 50;  
+                                        } else {
+                                            pontos += 50;  
+                                        }
+
+                                        candidatosDA.push({ valor: v, pontos: pontos });
+                                    }
+                                }
+                            }
+                        });
+
+                        candidatosUVIS.sort((a, b) => b.pontos - a.pontos);
+                        candidatosDA.sort((a, b) => b.pontos - a.pontos);
+
+                        document.getElementById('res-uvis').innerText = candidatosUVIS.length > 0 ? candidatosUVIS[0].valor : "Fora da área mapeada";
+                        document.getElementById('res-da').innerText = candidatosDA.length > 0 ? candidatosDA[0].valor : "Fora da área mapeada";
+
+ 
+                        let nomeUBS = "Não localizada na base";
+                        let achouUBS = false;
+
+                        if (geoJsonUBS) {
+                            turf.featureEach(geoJsonUBS, function(feat) {
+                                if (achouUBS) return; 
+                                
+ 
+                                if (feat.geometry.type !== 'Polygon' && feat.geometry.type !== 'MultiPolygon') return;
+
+                                if (turf.booleanPointInPolygon(ponto, feat)) {
+                                    const p = feat.properties;
+                                    nomeUBS = p.Name || p.name || p.NOME || p.NO_FANTASIA || p.description || "Sem Nome";
+                                    nomeUBS = nomeUBS.replace(/<[^>]*>?/gm, ''); 
+                                    achouUBS = true;
+                                }
+                            });
+                        }
+
+                        const elUBS = document.getElementById('res-ubs');
+                        if (elUBS) {
+                            elUBS.innerText = nomeUBS;
+                            if (achouUBS) elUBS.style.color = "#198754";
+                            else elUBS.style.color = "#6c757d";
+                        }
+                    }
+                    
                     results.style.display = 'block';
                 } else {
-                    alert("Endereço não encontrado pelo mapa. Tente verificar a escrita.");
+                    alert("Endereço não encontrado.");
                 }
-            })
-            .catch((err) => {
-                loading.style.display = 'none';
-                btn.style.display = 'block';
-                console.error(err);
-                alert("Erro de conexão: " + err.message);
-            });
-        });
-    }
+            };
 
-    function verificarLocal(lat, lon) {
-        if (!geoJsonData) return document.getElementById('res-uvis').innerText = "Erro: Base de dados não carregou.";
-        if (typeof turf === 'undefined') return alert("ERRO CRÍTICO: O arquivo turf.js não foi encontrado/carregado.");
-
-        const ponto = turf.point([lon, lat]);
-        let candidatosUVIS = [];
-        let candidatosDA = [];
-
-        turf.featureEach(geoJsonData, function(feat) {
-            if (turf.booleanPointInPolygon(ponto, feat)) {
-                const props = feat.properties;
-                for (const [key, value] of Object.entries(props)) {
-                    const k = key.toLowerCase();
-                    const v = String(value).trim();
-
-                    if (k.includes('uvis')) {
-                        let pontos = 0;
-                        if (k.includes('nome') || k.includes('nm') || k.includes('desc')) pontos += 20;
-                        if (isNaN(v)) pontos += 10;
-                        if (k.includes('cod') || k.includes('id')) pontos -= 10;
-                        candidatosUVIS.push({
-                            valor: v,
-                            pontos: pontos
-                        });
+ 
+            if (cachedData) {
+                console.log("Usando cache local");
+                processarDados(JSON.parse(cachedData));
+            } else {
+                fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=1&q=${encodeURIComponent(query)}&email=wellingtonlb22@outlook.com`, {
+                    headers: { "Accept-Language": "pt-BR" }
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data && data.length > 0) {
+                        localStorage.setItem(cacheKey, JSON.stringify(data));
+                        processarDados(data);
+                    } else {
+                        processarDados([]);
                     }
-                    if (k.includes('da') || k.includes('distrito')) {
-                        let pontos = 0;
-                        if (k.includes('nome') || k.includes('nm') || k.includes('desc')) pontos += 20;
-                        if (isNaN(v)) pontos += 10;
-                        candidatosDA.push({
-                            valor: v,
-                            pontos: pontos
-                        });
-                    }
-                }
+                })
+                .catch(err => {
+                    loading.style.display = 'none';
+                    btn.style.display = 'block';
+                    alert("Erro de conexão.");
+                });
             }
         });
-
-        candidatosUVIS.sort((a, b) => b.pontos - a.pontos);
-        candidatosDA.sort((a, b) => b.pontos - a.pontos);
-
-        document.getElementById('res-uvis').innerText = candidatosUVIS.length > 0 ? candidatosUVIS[0].valor : "Fora da área mapeada";
-        document.getElementById('res-da').innerText = candidatosDA.length > 0 ? candidatosDA[0].valor : "Fora da área mapeada";
     }
 
-    document.querySelectorAll('.btn-copy').forEach(btn => {
-        btn.addEventListener('click', function() {
+ 
+    document.querySelectorAll('.btn-copy').forEach(btnCopy => {
+        btnCopy.addEventListener('click', function() {
             const targetId = this.getAttribute('data-target');
             const el = document.getElementById(targetId);
             if (el) {
-                const text = el.innerText;
-                navigator.clipboard.writeText(text).then(() => {
+                navigator.clipboard.writeText(el.innerText).then(() => {
                     const originalText = this.innerText;
                     this.innerText = "✓";
-                    this.classList.add('copied');
-                    setTimeout(() => {
-                        this.innerText = originalText;
-                        this.classList.remove('copied');
-                    }, 1500);
+                    setTimeout(() => { this.innerText = originalText; }, 1500);
                 });
             }
         });
