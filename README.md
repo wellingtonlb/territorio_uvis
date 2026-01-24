@@ -40,6 +40,7 @@ Encontrou um erro ou o mapa não bateu com a realidade?
 * Abra uma **[Issue](https://github.com/wellingtonlb/territorio_uvis/issues)** aqui no GitHub.
 * Ou envie um e-mail através da página da Chrome Web Store.
 
+**[Acesse o repositório da versão Web clicando aqui](https://github.com/wellingtonlb/consulta-uvis/)**
 ---
 
 ## Licença
