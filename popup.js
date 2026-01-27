@@ -3,7 +3,6 @@ document.addEventListener('DOMContentLoaded', function() {
  
     let geoJsonData = null;  
     let geoJsonUBS = null;   
-    
  
     const arquivoUVIS = 'Territórios_UVIS.geojson'; 
     const arquivoUBS = 'Territorios_UBS.geojson';
@@ -127,8 +126,7 @@ document.addEventListener('DOMContentLoaded', function() {
             logradouro = logradouroInput.value;
         }
 
-        
-        
+ 
         let query = `${logradouro}`;
         if (numero !== "") query += `, ${numero}`;
         
@@ -143,7 +141,6 @@ document.addEventListener('DOMContentLoaded', function() {
             addressdetails: 1
         });
 
- 
  
         if (cidadeAlvo === "São Paulo") {
             params.append('viewbox', '-47.20,-23.10,-46.10,-24.00'); 
@@ -171,7 +168,6 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
 
- 
     function fazerBuscaSemNumero(logradouro, cidadeAlvo) {
         const query = `${logradouro}, ${cidadeAlvo}, Brazil`;
         const params = new URLSearchParams({
@@ -224,9 +220,23 @@ document.addEventListener('DOMContentLoaded', function() {
             turf.featureEach(geoJsonData, function (feat) {
                 if (turf.booleanPointInPolygon(ponto, feat)) {
                     const props = feat.properties;
+                    
+ 
                     for (const [key, val] of Object.entries(props)) {
                         const k = key.toLowerCase();
-                        if (k.includes('uvis') && (k.includes('nome') || isNaN(val))) uvisEncontrada = val;
+                        
+ 
+                        if (k.includes('uvis') && !k.includes('endereco') && !k.includes('logradouro')) {
+ 
+                             if (k.includes('nome') || k.includes('nm')) {
+                                 uvisEncontrada = val;
+                             } 
+ 
+                             else if (uvisEncontrada === "Fora da área mapeada" && isNaN(val)) {
+                                 uvisEncontrada = val;
+                             }
+                        }
+
                         if ((k.includes('da') || k.includes('distrito')) && isNaN(val)) daEncontrada = val;
                     }
                 }
